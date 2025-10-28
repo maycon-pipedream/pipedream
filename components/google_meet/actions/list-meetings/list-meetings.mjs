@@ -1,27 +1,24 @@
-import { axios } from "@pipedream/platform";
-
 export default {
   name: "List Google Meet Meetings",
-  version: "0.0.1",
-  key: "google-meet-list-meetings",
+  version: "0.0.2",
+  key: "google_meet-list-meetings",
   description: "Retrieve all upcoming Google Meet meetings from your Google Calendar",
   type: "action",
   props: {
-    google_calendar: {
+    google_meet: {
       type: "app",
-      app: "google_calendar",
+      app: "google_meet",
     },
     calendarId: {
       type: "string",
       label: "Calendar ID",
-      description: "Usually your email address, or use `primary` for your main calendar",
+      description: "The calendar to fetch meetings from",
       default: "primary",
       optional: true,
     },
     maxResults: {
       type: "integer",
       label: "Max Results",
-      description: "Maximum number of meetings to retrieve",
       default: 10,
       optional: true,
     },
@@ -30,29 +27,29 @@ export default {
   async run({ $ }) {
     const now = new Date().toISOString();
 
-    const response = await axios($, {
-      url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events`,
-      headers: {
-        Authorization: `Bearer ${this.google_calendar.$auth.oauth_access_token}`,
-      },
-      params: {
+    const response = await this.google_meet.requestHandler({
+      api: "events",
+      method: "list",
+      args: {
+        calendarId: this.calendarId,
         timeMin: now,
         singleEvents: true,
         orderBy: "startTime",
         maxResults: this.maxResults,
       },
     });
-    
+
     const meetings = response.items
       .filter(event => event.hangoutLink)
       .map(event => ({
+        id: event.id,
         title: event.summary,
         start: event.start?.dateTime,
         end: event.end?.dateTime,
         meetLink: event.hangoutLink,
       }));
 
-    $.export("$summary", `Found ${meetings.length} upcoming Google Meet meetings`);
+    $.export("$summary", `Found ${meetings.length} meetings`);
     return meetings;
   },
 };
